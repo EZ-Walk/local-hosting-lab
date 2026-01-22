@@ -1,0 +1,179 @@
+version: '3.8'
+
+services:
+  # Static Web Server - Learn about HTTP, port binding, volume mounts
+  static-web:
+    image: nginx:alpine
+    container_name: static-web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web-services/static:/usr/share/nginx/html
+    networks:
+      - frontend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.static.rule=Host(`static.local`)"
+
+  # Dynamic Node.js App - Learn about application-level networking
+  node-app:
+    build: ./web-services/node-app
+    container_name: node-app
+    ports:
+      - "8081:3000"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - REDIS_HOST=redis
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      - postgres
+      - redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nodeapp.rule=Host(`api.local`)"
+
+  # Python API Service - Learn about REST APIs and service communication
+  python-api:
+    build: ./web-services/python-api
+    container_name: python-api
+    ports:
+      - "8082:5000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/appdb
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      - postgres
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pythonapi.rule=Host(`python-api.local`)"
+
+  # PostgreSQL Database - Learn about database networking and port exposure
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=appdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./databases/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - backend
+
+  # Redis Cache - Learn about in-memory databases and caching layers
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    command: redis-server --appendonly yes
+
+  # Reverse Proxy - Learn about load balancing, SSL termination, service discovery
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8090:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./proxy/traefik.yml:/etc/traefik/traefik.yml
+      - ./proxy/dynamic.yml:/etc/traefik/dynamic.yml
+    networks:
+      - frontend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.local`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+
+  # Prometheus - Learn about metrics collection and time-series databases
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring
+      - backend
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+
+  # Grafana - Learn about data visualization and dashboard networking
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - monitoring
+      - backend
+    depends_on:
+      - prometheus
+
+  # Network monitoring tool - Learn about packet capture and traffic analysis
+  netdata:
+    image: netdata/netdata:latest
+    container_name: netdata
+    hostname: netdata.local
+    ports:
+      - "19999:19999"
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - monitoring
+
+# Network definitions - Learn about Docker networking, isolation, and communication
+networks:
+  frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+  backend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+  monitoring:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+
+# Persistent storage - Learn about data persistence and volume management
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

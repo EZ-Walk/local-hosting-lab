@@ -1,0 +1,92 @@
+# Prometheus configuration for network learning
+# Learn about metrics collection, service discovery, and monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'local-learning-lab'
+    replica: 'prometheus-01'
+
+# Alertmanager configuration (for learning about alerting)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []  # No alertmanager for this lab
+
+# Rule files for learning about alerting rules
+rule_files: []
+
+# Scrape configurations - Learn about metrics discovery and collection
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+
+  # Node.js application metrics
+  - job_name: 'node-app'
+    static_configs:
+      - targets: ['node-app:3000']
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+    scrape_timeout: 5s
+
+  # Python application metrics  
+  - job_name: 'python-api'
+    static_configs:
+      - targets: ['python-api:5000']
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+    scrape_timeout: 5s
+
+  # Traefik reverse proxy metrics
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['traefik:8080']
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+
+  # PostgreSQL database metrics (using postgres_exporter if available)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    scrape_timeout: 10s
+
+  # Redis metrics (using redis_exporter if available)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    scrape_timeout: 10s
+
+  # NetData system monitoring
+  - job_name: 'netdata'
+    static_configs:
+      - targets: ['netdata:19999']
+    scrape_interval: 30s
+    metrics_path: '/api/v1/allmetrics'
+    params:
+      format: ['prometheus']
+
+  # Docker container metrics (if available)
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['docker.for.mac.localhost:9323']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+
+# Remote write configuration (for learning about data federation)
+# Commented out for local lab
+# remote_write:
+#   - url: "http://remote-prometheus:9090/api/v1/write"
+
+# Remote read configuration (for learning about data federation)  
+# Commented out for local lab
+# remote_read:
+#   - url: "http://remote-prometheus:9090/api/v1/read"

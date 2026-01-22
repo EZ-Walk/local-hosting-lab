@@ -1,0 +1,70 @@
+## Traefik Configuration for Network Learning
+## Learn about reverse proxying, load balancing, and service discovery
+
+# Global configuration
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+# Entry points - Learn about port binding and protocol handling
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+  traefik:
+    address: ":8080"
+
+# Enable API and Dashboard - Learn about management interfaces
+api:
+  dashboard: true
+  debug: true
+
+# Certificate management - Learn about TLS/SSL termination
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@local.dev
+      storage: /etc/traefik/acme.json
+      keyType: EC256
+      # Use HTTP challenge for local development
+      httpChallenge:
+        entryPoint: web
+
+# Providers - Learn about service discovery mechanisms
+providers:
+  # Docker provider - automatic service discovery
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: "frontend"
+    watch: true
+    
+  # File provider - static configuration
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+# Logging - Learn about access logs and traffic analysis
+log:
+  level: INFO
+  format: common
+
+accessLog:
+  format: json
+  fields:
+    headers:
+      defaultMode: keep
+    names:
+      ClientUsername: drop
+      
+# Metrics - Learn about monitoring and observability
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addServicesLabels: true
+    addRoutersLabels: true
+
+# Ping endpoint for health checks
+ping:
+  entryPoint: "traefik"

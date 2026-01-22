@@ -1,0 +1,134 @@
+## Traefik Dynamic Configuration
+## Learn about routing rules, middleware, and traffic management
+
+# HTTP routers - Learn about request routing and path-based routing
+http:
+  routers:
+    # Static website router
+    static-router:
+      rule: "Host(`static.local`)"
+      service: static-service
+      entryPoints:
+        - web
+      middlewares:
+        - default-headers
+        - gzip
+
+    # Node.js API router 
+    api-router:
+      rule: "Host(`api.local`) || PathPrefix(`/api`)"
+      service: node-service
+      entryPoints:
+        - web
+      middlewares:
+        - api-headers
+        - rate-limit
+        - gzip
+
+    # Python API router
+    python-router:
+      rule: "Host(`python-api.local`) || PathPrefix(`/python`)"
+      service: python-service
+      entryPoints:
+        - web
+      middlewares:
+        - api-headers
+        - gzip
+
+  # Services - Learn about load balancing and health checks
+  services:
+    static-service:
+      loadBalancer:
+        servers:
+          - url: "http://static-web:80"
+        healthCheck:
+          path: "/index.html"
+          interval: "30s"
+          timeout: "5s"
+
+    node-service:
+      loadBalancer:
+        servers:
+          - url: "http://node-app:3000"
+        healthCheck:
+          path: "/health"
+          interval: "10s"
+          timeout: "3s"
+
+    python-service:
+      loadBalancer:
+        servers:
+          - url: "http://python-api:5000"
+        healthCheck:
+          path: "/health"
+          interval: "10s"
+          timeout: "3s"
+
+  # Middleware - Learn about request/response processing
+  middlewares:
+    # Default security headers
+    default-headers:
+      headers:
+        frameDeny: true
+        sslRedirect: false
+        browserXssFilter: true
+        contentTypeNosniff: true
+        customRequestHeaders:
+          X-Forwarded-Proto: "http"
+          
+    # API-specific headers
+    api-headers:
+      headers:
+        customRequestHeaders:
+          X-API-Version: "1.0"
+          X-Request-Source: "traefik-proxy"
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+        accessControlAllowOriginList:
+          - "*"
+          
+    # Rate limiting - Learn about traffic control
+    rate-limit:
+      rateLimit:
+        average: 100
+        period: "1m"
+        burst: 50
+        
+    # Compression - Learn about response optimization
+    gzip:
+      compress: {}
+      
+    # Authentication (for learning about security)
+    basic-auth:
+      basicAuth:
+        users:
+          - "admin:$2y$10$2b2cu8Fw4ZepO0kcgd3Z4OXYy0gdXqsm7JaF0FO8O8I9Y.9kJ8.vS"  # admin:secret
+
+# TCP routers for database connections (advanced learning)
+tcp:
+  routers:
+    postgres-router:
+      rule: "HostSNI(`*`)"
+      service: postgres-service
+      entryPoints:
+        - postgres
+        
+    redis-router:
+      rule: "HostSNI(`*`)"
+      service: redis-service
+      entryPoints:
+        - redis
+        
+  services:
+    postgres-service:
+      loadBalancer:
+        servers:
+          - address: "postgres:5432"
+          
+    redis-service:
+      loadBalancer:
+        servers:
+          - address: "redis:6379"
