@@ -43,6 +43,6 @@ FROM service_health s
 LEFT JOIN network_logs l ON l.request_path LIKE '%' || s.service_name || '%'
 GROUP BY s.service_name, s.status, s.last_check;
 
--- Grant permissions
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO user;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO user;
+-- Grant permissions (user is a reserved keyword, need to quote it)
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "user";
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO "user";
